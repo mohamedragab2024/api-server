@@ -1,96 +1,126 @@
 package main
 
 import (
-	"encoding/json"
+	"flag"
 	"fmt"
+	"io"
 	"net/http"
+	"strconv"
+	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
-	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"github.com/kube-carbonara/api-server/models"
-	"github.com/labstack/echo/v4"
+	"github.com/gorilla/mux"
+	"github.com/rancher/remotedialer"
+	"github.com/sirupsen/logrus"
+)
+
+var (
+	clients = map[string]*http.Client{}
+	l       sync.Mutex
+	counter int64
 )
 
 func init() {
 }
 
-var connectHandler mqtt.OnConnectHandler = func(client mqtt.Client) {
-	fmt.Println("Connected")
+func authorizer(req *http.Request) (string, bool, error) {
+	id := req.Header.Get("x-tunnel-id")
+	return id, id != "", nil
 }
 
-var connectionLostHandler mqtt.ConnectionLostHandler = func(client mqtt.Client, err error) {
-	fmt.Printf("Connection Lost: %s\n", err.Error())
+func Client(server *remotedialer.Server, rw http.ResponseWriter, req *http.Request) {
+	timeout := req.URL.Query().Get("timeout")
+	if timeout == "" {
+		timeout = "15"
+	}
+
+	vars := mux.Vars(req)
+	clientKey := vars["id"]
+	url := fmt.Sprintf("%s://%s%s", vars["scheme"], vars["host"], vars["path"])
+	client := getClient(server, clientKey, timeout)
+
+	id := atomic.AddInt64(&counter, 1)
+	logrus.Infof("[%03d] REQ t=%s %s", id, timeout, url)
+
+	resp, err := client.Get(url)
+	if err != nil {
+		logrus.Errorf("[%03d] REQ ERR t=%s %s: %v", id, timeout, url, err)
+		remotedialer.DefaultErrorWriter(rw, req, 500, err)
+		return
+	}
+	defer resp.Body.Close()
+
+	logrus.Infof("[%03d] REQ OK t=%s %s", id, timeout, url)
+	rw.WriteHeader(resp.StatusCode)
+	io.Copy(rw, resp.Body)
+	logrus.Infof("[%03d] REQ DONE t=%s %s", id, timeout, url)
+}
+
+func getClient(server *remotedialer.Server, clientKey, timeout string) *http.Client {
+	l.Lock()
+	defer l.Unlock()
+
+	key := fmt.Sprintf("%s/%s", clientKey, timeout)
+	client := clients[key]
+	if client != nil {
+		return client
+	}
+
+	dialer := server.Dialer(clientKey, 15*time.Second)
+	client = &http.Client{
+		Transport: &http.Transport{
+			Dial: dialer,
+		},
+	}
+	if timeout != "" {
+		t, err := strconv.Atoi(timeout)
+		if err == nil {
+			client.Timeout = time.Duration(t) * time.Second
+		}
+	}
+
+	clients[key] = client
+	return client
 }
 
 func main() {
-	options := mqtt.NewClientOptions()
-	options.AddBroker("tcp://localhost:1883")
-	options.SetClientID("go_server")
-	options.OnConnect = connectHandler
-	options.OnConnectionLost = connectionLostHandler
-	client := mqtt.NewClient(options)
-	token := client.Connect()
-	if token.Wait() && token.Error() != nil {
-		panic(token.Error())
+
+	var (
+		addr      string
+		peerID    string
+		peerToken string
+		peers     string
+		debug     bool
+	)
+	flag.StringVar(&addr, "listen", ":8099", "Listen address")
+	flag.StringVar(&peerID, "id", "", "Peer ID")
+	flag.StringVar(&peerToken, "token", "", "Peer Token")
+	flag.StringVar(&peers, "peers", "", "Peers format id:token:url,id:token:url")
+	flag.BoolVar(&debug, "debug", false, "Enable debug logging")
+	flag.Parse()
+	if debug {
+		logrus.SetLevel(logrus.DebugLevel)
+		remotedialer.PrintTunnelData = true
+	}
+	handler := remotedialer.New(authorizer, remotedialer.DefaultErrorWriter)
+	handler.PeerToken = peerToken
+	handler.PeerID = peerID
+	for _, peer := range strings.Split(peers, ",") {
+		parts := strings.SplitN(strings.TrimSpace(peer), ":", 3)
+		if len(parts) != 3 {
+			continue
+		}
+		handler.AddPeer(parts[2], parts[0], parts[1])
 	}
 
-	e := echo.New()
-	e.GET("/", func(context echo.Context) error {
-		query := context.Request().URL.Query()
-		host := query.Get("client")
-		path := query.Get("path")
-		if host == "" {
-			return context.String(http.StatusBadRequest, "missing parameter Path")
-		}
-
-		req := models.ServerRequest{
-			Path:         path,
-			Verb:         "GET",
-			ResourceType: "namespace",
-		}
-
-		toSend, err := json.Marshal(req)
-		if err != nil {
-			fmt.Printf("Error encoding the request as JSON: %s\n", err.Error())
-			return context.String(http.StatusInternalServerError, err.Error())
-		}
-		var response models.Response
-
-		token := client.Publish("clients/"+host, 0, false, string(toSend))
-		token.Wait()
-		subToken := client.Subscribe("clients/"+host, 0, func(client mqtt.Client, msg mqtt.Message) {
-			err := json.Unmarshal(msg.Payload(), &response)
-			if err != nil {
-				fmt.Print(err.Error())
-			}
-			if response.Prefix == "" {
-				return
-			}
-
-		})
-
-		subToken.Wait()
-		if subToken.Error() != nil {
-			fmt.Printf("Error subscribing to clients/%s - %s\n", client, subToken.Error())
-			return context.String(http.StatusInternalServerError, err.Error())
-		}
-
-		count := 0
-		for response.Status == 0 && count < 80 {
-			time.Sleep(250 * time.Millisecond)
-			count++
-
-		}
-
-		if response.Status <= 0 {
-			return context.HTML(http.StatusInternalServerError, "<p>Failed to call remote server</p>")
-		}
-
-		if response.Status > 200 {
-			return context.JSON(response.Status, response)
-		}
-
-		return context.JSON(http.StatusOK, response)
+	router := mux.NewRouter()
+	router.Handle("/connect", handler)
+	router.HandleFunc("/client/{id}/{scheme}/{host}{path:.*}", func(rw http.ResponseWriter, req *http.Request) {
+		Client(handler, rw, req)
 	})
-	e.Logger.Fatal(e.Start(":8099"))
+
+	fmt.Println("Listening on ", addr)
+	http.ListenAndServe(addr, router)
 }
