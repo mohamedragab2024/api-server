@@ -10,6 +10,7 @@ require (
 	github.com/koding/tunnel v0.0.0-20170601195443-35a8b95662bf // indirect
 	github.com/labstack/echo/v4 v4.5.0
 	github.com/mattn/go-isatty v0.0.13 // indirect
+	github.com/prometheus/client_golang v1.4.0 // indirect
 	github.com/rancher/remotedialer v0.2.5
 	github.com/sirupsen/logrus v1.4.2
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
