@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -40,10 +41,24 @@ func Client(server *remotedialer.Server, rw http.ResponseWriter, req *http.Reque
 	clientKey := vars["id"]
 	url := fmt.Sprintf("%s://%s%s", vars["scheme"], vars["host"], vars["path"])
 	client := getClient(server, clientKey, timeout)
-
+	switch req.Method {
+	case http.MethodGet:
+		get(server, rw, req, client, clientKey, timeout, url)
+	case http.MethodPost:
+		post(server, rw, req, client, clientKey, timeout, url)
+	case http.MethodDelete:
+		delete(server, rw, req, client, clientKey, timeout, url)
+	case http.MethodPut:
+		update(server, rw, req, client, clientKey, timeout, url)
+	default:
+		remotedialer.DefaultErrorWriter(rw, req, 405, errors.New("method not allowed"))
+	}
 	id := atomic.AddInt64(&counter, 1)
 	logrus.Infof("[%03d] REQ t=%s %s", id, timeout, url)
 
+}
+
+func get(server *remotedialer.Server, rw http.ResponseWriter, req *http.Request, client *http.Client, id string, timeout string, url string) {
 	resp, err := client.Get(url)
 	if err != nil {
 		logrus.Errorf("[%03d] REQ ERR t=%s %s: %v", id, timeout, url, err)
@@ -52,6 +67,63 @@ func Client(server *remotedialer.Server, rw http.ResponseWriter, req *http.Reque
 	}
 	defer resp.Body.Close()
 
+	logrus.Infof("[%03d] REQ OK t=%s %s", id, timeout, url)
+	rw.WriteHeader(resp.StatusCode)
+	io.Copy(rw, resp.Body)
+	logrus.Infof("[%03d] REQ DONE t=%s %s", id, timeout, url)
+}
+
+func post(server *remotedialer.Server, rw http.ResponseWriter, req *http.Request, client *http.Client, id string, timeout string, url string) {
+	resp, err := client.Post(url, "", req.Body)
+	if err != nil {
+		logrus.Errorf("[%03d] REQ ERR t=%s %s: %v", id, timeout, url, err)
+		remotedialer.DefaultErrorWriter(rw, req, 500, err)
+		return
+	}
+	defer resp.Body.Close()
+
+	logrus.Infof("[%03d] REQ OK t=%s %s", id, timeout, url)
+	rw.WriteHeader(resp.StatusCode)
+	io.Copy(rw, resp.Body)
+	logrus.Infof("[%03d] REQ DONE t=%s %s", id, timeout, url)
+}
+
+func delete(server *remotedialer.Server, rw http.ResponseWriter, req *http.Request, client *http.Client, id string, timeout string, url string) {
+	newReq, err := http.NewRequest(http.MethodDelete, url, req.Body)
+
+	if err != nil {
+		logrus.Errorf("[%03d] REQ ERR t=%s %s: %v", id, timeout, url, err)
+		remotedialer.DefaultErrorWriter(rw, req, 500, err)
+		return
+	}
+	resp, err := client.Do(newReq)
+	if err != nil {
+		logrus.Errorf("[%03d] REQ ERR t=%s %s: %v", id, timeout, url, err)
+		remotedialer.DefaultErrorWriter(rw, req, 500, err)
+		return
+	}
+	defer resp.Body.Close()
+	logrus.Infof("[%03d] REQ OK t=%s %s", id, timeout, url)
+	rw.WriteHeader(resp.StatusCode)
+	io.Copy(rw, resp.Body)
+	logrus.Infof("[%03d] REQ DONE t=%s %s", id, timeout, url)
+}
+
+func update(server *remotedialer.Server, rw http.ResponseWriter, req *http.Request, client *http.Client, id string, timeout string, url string) {
+	newReq, err := http.NewRequest(http.MethodPut, url, req.Body)
+
+	if err != nil {
+		logrus.Errorf("[%03d] REQ ERR t=%s %s: %v", id, timeout, url, err)
+		remotedialer.DefaultErrorWriter(rw, req, 500, err)
+		return
+	}
+	resp, err := client.Do(newReq)
+	if err != nil {
+		logrus.Errorf("[%03d] REQ ERR t=%s %s: %v", id, timeout, url, err)
+		remotedialer.DefaultErrorWriter(rw, req, 500, err)
+		return
+	}
+	defer resp.Body.Close()
 	logrus.Infof("[%03d] REQ OK t=%s %s", id, timeout, url)
 	rw.WriteHeader(resp.StatusCode)
 	io.Copy(rw, resp.Body)
