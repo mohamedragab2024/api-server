@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	utils "github.com/kube-carbonara/api-server/utils"
 	"github.com/rancher/remotedialer"
 	"github.com/sirupsen/logrus"
 )
@@ -70,12 +71,13 @@ func get(server *remotedialer.Server, rw http.ResponseWriter, req *http.Request,
 
 	logrus.Infof("[%03d] REQ OK t=%s %s", id, timeout, url)
 	rw.WriteHeader(resp.StatusCode)
+	rw.Header().Add("Content-Type", utils.APPLICATION_JSON)
 	io.Copy(rw, resp.Body)
 	logrus.Infof("[%03d] REQ DONE t=%s %s", id, timeout, url)
 }
 
 func post(server *remotedialer.Server, rw http.ResponseWriter, req *http.Request, client *http.Client, id string, timeout string, url string) {
-	resp, err := client.Post(url, "", req.Body)
+	resp, err := client.Post(url, utils.APPLICATION_JSON, req.Body)
 	if err != nil {
 		logrus.Errorf("[%03d] REQ ERR t=%s %s: %v", id, timeout, url, err)
 		remotedialer.DefaultErrorWriter(rw, req, 500, err)
@@ -85,6 +87,7 @@ func post(server *remotedialer.Server, rw http.ResponseWriter, req *http.Request
 
 	logrus.Infof("[%03d] REQ OK t=%s %s", id, timeout, url)
 	rw.WriteHeader(resp.StatusCode)
+	rw.Header().Add("Content-Type", utils.APPLICATION_JSON)
 	io.Copy(rw, resp.Body)
 	logrus.Infof("[%03d] REQ DONE t=%s %s", id, timeout, url)
 }
@@ -106,6 +109,7 @@ func delete(server *remotedialer.Server, rw http.ResponseWriter, req *http.Reque
 	defer resp.Body.Close()
 	logrus.Infof("[%03d] REQ OK t=%s %s", id, timeout, url)
 	rw.WriteHeader(resp.StatusCode)
+	rw.Header().Add("Content-Type", utils.APPLICATION_JSON)
 	io.Copy(rw, resp.Body)
 	logrus.Infof("[%03d] REQ DONE t=%s %s", id, timeout, url)
 }
@@ -127,6 +131,7 @@ func update(server *remotedialer.Server, rw http.ResponseWriter, req *http.Reque
 	defer resp.Body.Close()
 	logrus.Infof("[%03d] REQ OK t=%s %s", id, timeout, url)
 	rw.WriteHeader(resp.StatusCode)
+	rw.Header().Add("Content-Type", utils.APPLICATION_JSON)
 	io.Copy(rw, resp.Body)
 	logrus.Infof("[%03d] REQ DONE t=%s %s", id, timeout, url)
 }
