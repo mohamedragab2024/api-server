@@ -40,7 +40,7 @@ func Client(server *remotedialer.Server, rw http.ResponseWriter, req *http.Reque
 	host := "127.0.0.1:1323"
 	vars := mux.Vars(req)
 	clientKey := vars["id"]
-	url := fmt.Sprintf("%s://%s%s", scheme, host, vars["path"])
+	url := fmt.Sprintf("%s://%s/%s", scheme, host, vars["path"])
 	client := getClient(server, clientKey, timeout)
 	switch req.Method {
 	case http.MethodGet:
@@ -190,6 +190,7 @@ func main() {
 
 	router := mux.NewRouter()
 	router.Handle("/connect", handler)
+
 	router.HandleFunc("/clusters/{id}/{path:.*}", func(rw http.ResponseWriter, req *http.Request) {
 		Client(handler, rw, req)
 	})
