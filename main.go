@@ -1,27 +1,17 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
-	"io"
+	"log"
 	"net/http"
-	"strconv"
 	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
 
 	"github.com/gorilla/mux"
-	utils "github.com/kube-carbonara/api-server/utils"
+	"github.com/gorilla/websocket"
+	handlers "github.com/kube-carbonara/api-server/handlers"
 	"github.com/rancher/remotedialer"
 	"github.com/sirupsen/logrus"
-)
-
-var (
-	clients = map[string]*http.Client{}
-	l       sync.Mutex
-	counter int64
 )
 
 func init() {
@@ -32,136 +22,22 @@ func authorizer(req *http.Request) (string, bool, error) {
 	return id, id != "", nil
 }
 
-func Client(server *remotedialer.Server, rw http.ResponseWriter, req *http.Request) {
-	timeout := req.URL.Query().Get("timeout")
-	if timeout == "" {
-		timeout = "15"
-	}
-	scheme := "http"
-	host := "127.0.0.1:1323"
-	vars := mux.Vars(req)
-	clientKey := vars["id"]
-	url := fmt.Sprintf("%s://%s/%s", scheme, host, vars["path"])
-	client := getClient(server, clientKey, timeout)
-	switch req.Method {
-	case http.MethodGet:
-		get(server, rw, req, client, clientKey, timeout, url)
-	case http.MethodPost:
-		post(server, rw, req, client, clientKey, timeout, url)
-	case http.MethodDelete:
-		delete(server, rw, req, client, clientKey, timeout, url)
-	case http.MethodPut:
-		update(server, rw, req, client, clientKey, timeout, url)
-	default:
-		remotedialer.DefaultErrorWriter(rw, req, 405, errors.New("method not allowed"))
-	}
-	id := atomic.AddInt64(&counter, 1)
-	logrus.Infof("[%03d] REQ t=%s %s", id, timeout, url)
-
-}
-
-func get(server *remotedialer.Server, rw http.ResponseWriter, req *http.Request, client *http.Client, id string, timeout string, url string) {
-	resp, err := client.Get(url)
+func handleServiceEvents(w http.ResponseWriter, r *http.Request) {
+	var upgrader = websocket.Upgrader{}
+	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		logrus.Errorf("[%03d] REQ ERR t=%s %s: %v", id, timeout, url, err)
-		remotedialer.DefaultErrorWriter(rw, req, 500, err)
+		log.Print("upgrade:", err)
 		return
 	}
-	defer resp.Body.Close()
-
-	logrus.Infof("[%03d] REQ OK t=%s %s", id, timeout, url)
-	rw.WriteHeader(resp.StatusCode)
-	rw.Header().Set("Content-Type", "application/json")
-
-	io.Copy(rw, resp.Body)
-	logrus.Infof("[%03d] REQ DONE t=%s %s", id, timeout, url)
-}
-
-func post(server *remotedialer.Server, rw http.ResponseWriter, req *http.Request, client *http.Client, id string, timeout string, url string) {
-	resp, err := client.Post(url, utils.APPLICATION_JSON, req.Body)
-	if err != nil {
-		logrus.Errorf("[%03d] REQ ERR t=%s %s: %v", id, timeout, url, err)
-		remotedialer.DefaultErrorWriter(rw, req, 500, err)
-		return
-	}
-	defer resp.Body.Close()
-
-	logrus.Infof("[%03d] REQ OK t=%s %s", id, timeout, url)
-	rw.WriteHeader(resp.StatusCode)
-	rw.Header().Set("Content-Type", "application/json")
-	io.Copy(rw, resp.Body)
-	logrus.Infof("[%03d] REQ DONE t=%s %s", id, timeout, url)
-}
-
-func delete(server *remotedialer.Server, rw http.ResponseWriter, req *http.Request, client *http.Client, id string, timeout string, url string) {
-	newReq, err := http.NewRequest(http.MethodDelete, url, req.Body)
-
-	if err != nil {
-		logrus.Errorf("[%03d] REQ ERR t=%s %s: %v", id, timeout, url, err)
-		remotedialer.DefaultErrorWriter(rw, req, 500, err)
-		return
-	}
-	resp, err := client.Do(newReq)
-	if err != nil {
-		logrus.Errorf("[%03d] REQ ERR t=%s %s: %v", id, timeout, url, err)
-		remotedialer.DefaultErrorWriter(rw, req, 500, err)
-		return
-	}
-	defer resp.Body.Close()
-	logrus.Infof("[%03d] REQ OK t=%s %s", id, timeout, url)
-	rw.WriteHeader(resp.StatusCode)
-	rw.Header().Set("Content-Type", "application/json")
-	io.Copy(rw, resp.Body)
-	logrus.Infof("[%03d] REQ DONE t=%s %s", id, timeout, url)
-}
-
-func update(server *remotedialer.Server, rw http.ResponseWriter, req *http.Request, client *http.Client, id string, timeout string, url string) {
-	newReq, err := http.NewRequest(http.MethodPut, url, req.Body)
-
-	if err != nil {
-		logrus.Errorf("[%03d] REQ ERR t=%s %s: %v", id, timeout, url, err)
-		remotedialer.DefaultErrorWriter(rw, req, 500, err)
-		return
-	}
-	resp, err := client.Do(newReq)
-	if err != nil {
-		logrus.Errorf("[%03d] REQ ERR t=%s %s: %v", id, timeout, url, err)
-		remotedialer.DefaultErrorWriter(rw, req, 500, err)
-		return
-	}
-	defer resp.Body.Close()
-	logrus.Infof("[%03d] REQ OK t=%s %s", id, timeout, url)
-	rw.WriteHeader(resp.StatusCode)
-	rw.Header().Set("Content-Type", "application/json")
-	io.Copy(rw, resp.Body)
-	logrus.Infof("[%03d] REQ DONE t=%s %s", id, timeout, url)
-}
-
-func getClient(server *remotedialer.Server, clientKey, timeout string) *http.Client {
-	l.Lock()
-	defer l.Unlock()
-
-	key := fmt.Sprintf("%s/%s", clientKey, timeout)
-	client := clients[key]
-	if client != nil {
-		return client
-	}
-
-	dialer := server.Dialer(clientKey, 15*time.Second)
-	client = &http.Client{
-		Transport: &http.Transport{
-			Dial: dialer,
-		},
-	}
-	if timeout != "" {
-		t, err := strconv.Atoi(timeout)
-		if err == nil {
-			client.Timeout = time.Duration(t) * time.Second
+	defer c.Close()
+	for {
+		_, message, err := c.ReadMessage()
+		if err != nil {
+			log.Println("read:", err)
+			break
 		}
+		log.Printf("recv: %s", message)
 	}
-
-	clients[key] = client
-	return client
 }
 
 func main() {
@@ -196,9 +72,9 @@ func main() {
 
 	router := mux.NewRouter()
 	router.Handle("/connect", handler)
-
+	router.HandleFunc("/services", handleServiceEvents)
 	router.HandleFunc("/clusters/{id}/{path:.*}", func(rw http.ResponseWriter, req *http.Request) {
-		Client(handler, rw, req)
+		handlers.ClientHandler{}.Handle(handler, rw, req)
 	})
 
 	fmt.Println("Listening on ", addr)

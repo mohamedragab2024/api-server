@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/eclipse/paho.mqtt.golang v1.3.5
 	github.com/gorilla/mux v1.7.3
+	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/hashicorp/yamux v0.0.0-20210826001029-26ff87cf9493 // indirect
 	github.com/koding/logging v0.0.0-20160720134017-8b5a689ed69b // indirect
 	github.com/koding/tunnel v0.0.0-20170601195443-35a8b95662bf // indirect
