@@ -22,7 +22,7 @@ func authorizer(req *http.Request) (string, bool, error) {
 	return id, id != "", nil
 }
 
-func handleServiceEvents(w http.ResponseWriter, r *http.Request) {
+func handleClientEvents(w http.ResponseWriter, r *http.Request) {
 	var upgrader = websocket.Upgrader{}
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -72,7 +72,7 @@ func main() {
 
 	router := mux.NewRouter()
 	router.Handle("/connect", handler)
-	router.HandleFunc("/services", handleServiceEvents)
+	router.HandleFunc("/monitoring", handleClientEvents)
 	router.HandleFunc("/clusters/{id}/{path:.*}", func(rw http.ResponseWriter, req *http.Request) {
 		handlers.ClientHandler{}.Handle(handler, rw, req)
 	})
