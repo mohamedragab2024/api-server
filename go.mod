@@ -3,18 +3,19 @@ module github.com/kube-carbonara/api-server
 go 1.16
 
 require (
-	github.com/eclipse/paho.mqtt.golang v1.3.5
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.7.3
-	github.com/gorilla/websocket v1.4.2 // indirect
-	github.com/hashicorp/yamux v0.0.0-20210826001029-26ff87cf9493 // indirect
-	github.com/koding/logging v0.0.0-20160720134017-8b5a689ed69b // indirect
-	github.com/koding/tunnel v0.0.0-20170601195443-35a8b95662bf // indirect
-	github.com/labstack/echo/v4 v4.5.0
-	github.com/mattn/go-isatty v0.0.13 // indirect
-	github.com/prometheus/client_golang v1.4.0 // indirect
+	github.com/gorilla/websocket v1.4.2
+	github.com/graarh/golang-socketio v0.0.0-20170510162725-2c44953b9b5f // indirect
+	github.com/joho/godotenv v1.3.0
 	github.com/rancher/remotedialer v0.2.5
-	github.com/sirupsen/logrus v1.4.2
-	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
+	github.com/rancher/wrangler v0.8.6
+	github.com/satori/go.uuid v1.2.0
+	github.com/sirupsen/logrus v1.6.0
+	go.etcd.io/etcd/client/v3 v3.5.0
+	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
 	golang.org/x/net v0.0.0-20210825183410-e898025ed96a // indirect
 	golang.org/x/sys v0.0.0-20210831042530-f4d43177bf5e // indirect
 	golang.org/x/text v0.3.7 // indirect

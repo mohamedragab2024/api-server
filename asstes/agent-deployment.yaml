@@ -1,0 +1,161 @@
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: proxy-clusterrole-kubeapiserver
+rules:
+- apiGroups: [""]
+  resources:
+  - nodes/metrics
+  - nodes/proxy
+  - nodes/stats
+  - nodes/log
+  - nodes/spec
+  verbs: ["get", "list", "watch", "create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: proxy-role-binding-kubernetes-master
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: proxy-clusterrole-kubeapiserver
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: kube-apiserver
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kube-carbo-system
+
+---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kub-carbo
+  namespace: kube-carbo-system
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kub-carbo-admin-binding
+  namespace: kube-carbo-system
+  labels:
+    cattle.io/creator: "norman"
+subjects:
+- kind: ServiceAccount
+  name: cattle
+  namespace: kube-carbo-system
+roleRef:
+  kind: ClusterRole
+  name: kub-carbo-admin
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kub-carbo-admin
+  labels:
+    cattle.io/creator: "norman"
+rules:
+- apiGroups:
+  - '*'
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- nonResourceURLs:
+  - '*'
+  verbs:
+  - '*'
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cattle-cluster-agent
+  namespace: kube-carbo-system
+spec:
+  selector:
+    matchLabels:
+      app: kub-carbo-cluster-dealer
+  template:
+    metadata:
+      labels:
+        app: kub-carbo-cluster-dealer
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: beta.kubernetes.io/os
+                  operator: NotIn
+                  values:
+                    - windows
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - preference:
+              matchExpressions:
+              - key: node-role.kubernetes.io/controlplane
+                operator: In
+                values:
+                - "true"
+            weight: 100
+          - preference:
+              matchExpressions:
+              - key: node-role.kubernetes.io/control-plane
+                operator: In
+                values:
+                - "true"
+            weight: 100
+          - preference:
+              matchExpressions:
+              - key: node-role.kubernetes.io/master
+                operator: In
+                values:
+                - "true"
+            weight: 100
+          - preference:
+              matchExpressions:
+              - key: kub-carbo.io/cluster-agent
+                operator: In
+                values:
+                - "true"
+            weight: 1
+      serviceAccountName: kub-carbo
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/controlplane
+        value: "true"
+      - effect: NoSchedule
+        key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+      - effect: NoSchedule
+        key: "node-role.kubernetes.io/master"
+        operator: "Exists"
+      containers:
+        - name: cluster-register
+          imagePullPolicy: IfNotPresent
+          env:
+          - name: SERVER_ADDRESS
+            value: "{SERVER_ADDRESS}"
+          - name: CLIENT_ID
+            value: "{CLIENT_ID}"
+
+          image: regoo707/kub-carbo-agent
+          readinessProbe:
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            httpGet:
+              path: /health
+              port: 1323

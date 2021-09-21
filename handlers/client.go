@@ -22,9 +22,13 @@ var (
 	counter int64
 )
 
-type ClientHandler struct{}
+type ClientHandler struct {
+}
 
 func (h ClientHandler) Handle(server *remotedialer.Server, rw http.ResponseWriter, req *http.Request) {
+	if !(AuthorizationHandler{}).IsAuthorized(rw, req) {
+		return
+	}
 	timeout := req.URL.Query().Get("timeout")
 	if timeout == "" {
 		timeout = "15"
@@ -34,7 +38,7 @@ func (h ClientHandler) Handle(server *remotedialer.Server, rw http.ResponseWrite
 	vars := mux.Vars(req)
 	clientKey := vars["id"]
 	url := fmt.Sprintf("%s://%s/%s", scheme, host, vars["path"])
-	client := getClient(server, clientKey, timeout)
+	client := h.GetClient(server, clientKey, timeout)
 	switch req.Method {
 	case http.MethodGet:
 		get(server, rw, req, client, clientKey, timeout, url)
@@ -51,7 +55,7 @@ func (h ClientHandler) Handle(server *remotedialer.Server, rw http.ResponseWrite
 	logrus.Infof("[%03d] REQ t=%s %s", id, timeout, url)
 }
 
-func getClient(server *remotedialer.Server, clientKey, timeout string) *http.Client {
+func (h ClientHandler) GetClient(server *remotedialer.Server, clientKey, timeout string) *http.Client {
 	l.Lock()
 	defer l.Unlock()
 

@@ -6,10 +6,15 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
+	gHandler "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/gorilla/websocket"
+	"github.com/joho/godotenv"
+	"github.com/kube-carbonara/api-server/connections"
 	handlers "github.com/kube-carbonara/api-server/handlers"
+	"github.com/kube-carbonara/api-server/routers"
+	"github.com/kube-carbonara/api-server/ws"
 	"github.com/rancher/remotedialer"
 	"github.com/sirupsen/logrus"
 )
@@ -22,25 +27,8 @@ func authorizer(req *http.Request) (string, bool, error) {
 	return id, id != "", nil
 }
 
-func handleClientEvents(w http.ResponseWriter, r *http.Request) {
-	var upgrader = websocket.Upgrader{}
-	c, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Print("upgrade:", err)
-		return
-	}
-	defer c.Close()
-	for {
-		_, message, err := c.ReadMessage()
-		if err != nil {
-			log.Println("read:", err)
-			break
-		}
-		log.Printf("recv: %s", message)
-	}
-}
-
 func main() {
+	godotenv.Load()
 
 	var (
 		addr      string
@@ -70,13 +58,30 @@ func main() {
 		handler.AddPeer(parts[2], parts[0], parts[1])
 	}
 
+	Insector := connections.ClusterInsector{Dialer: handler}
+
+	Insector.OnStartUp()
+
 	router := mux.NewRouter()
 	router.Handle("/connect", handler)
-	router.HandleFunc("/monitoring", handleClientEvents)
+	hub := ws.NewHub()
+	go hub.Run()
+	router.HandleFunc("/monitoring", func(rw http.ResponseWriter, r *http.Request) {
+		ws.ServeWs(hub, rw, r)
+	})
+
+	routers.ClusterRouter{}.Handle(router)
+	routers.AuthRouter{}.Handle(router)
+	routers.UserRouter{}.Handle(router)
+	router.HandleFunc("/health", func(rw http.ResponseWriter, r *http.Request) {
+		Insector.Aknowlegement(rw, r, 40*time.Second)
+	})
 	router.HandleFunc("/clusters/{id}/{path:.*}", func(rw http.ResponseWriter, req *http.Request) {
 		handlers.ClientHandler{}.Handle(handler, rw, req)
 	})
-
 	fmt.Println("Listening on ", addr)
-	http.ListenAndServe(addr, router)
+
+	log.Fatal(http.ListenAndServe(addr, gHandler.CORS(gHandler.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"}), gHandler.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS"}),
+		gHandler.AllowedOrigins([]string{"*"}))(router)))
+
 }
