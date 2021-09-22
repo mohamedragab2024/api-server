@@ -74,9 +74,14 @@ func main() {
 	routers.AuthRouter{}.Handle(router)
 	routers.UserRouter{}.Handle(router)
 	router.HandleFunc("/health", func(rw http.ResponseWriter, r *http.Request) {
+		rw.WriteHeader(http.StatusOK)
+		rw.Write([]byte("up is running"))
+	})
+
+	router.HandleFunc("/healthaknowlegment", func(rw http.ResponseWriter, r *http.Request) {
 		Insector.Aknowlegement(rw, r, 40*time.Second)
 	})
-	router.HandleFunc("/clusters/{id}/{path:.*}", func(rw http.ResponseWriter, req *http.Request) {
+	router.HandleFunc("/connections/{id}/{path:.*}", func(rw http.ResponseWriter, req *http.Request) {
 		handlers.ClientHandler{}.Handle(handler, rw, req)
 	})
 	fmt.Println("Listening on ", addr)

@@ -2,6 +2,7 @@ package ws
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -22,8 +23,9 @@ var (
 )
 
 var upgrader = websocket.Upgrader{
-	// ReadBufferSize:  1024,
-	// WriteBufferSize: 1024,
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
 type Client struct {
@@ -48,6 +50,8 @@ func (c *Client) readPump() {
 			}
 			break
 		}
+		fmt.Print(string(message))
+		fmt.Print(newline)
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
 		c.hub.broadcast <- message
 	}
@@ -86,6 +90,15 @@ func (c *Client) writePump() {
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
+			}
+		case m := <-c.hub.broadcast:
+			for c := range c.hub.clients {
+				select {
+				case c.send <- m:
+				default:
+					delete(c.hub.clients, c)
+					close(c.send)
+				}
 			}
 		}
 	}

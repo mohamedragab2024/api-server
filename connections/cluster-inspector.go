@@ -60,7 +60,7 @@ func (c ClusterInsector) healthCheck(clientId string) error {
 	timeout := "50"
 	scheme := "http"
 	host := "127.0.0.1:1323"
-	url := fmt.Sprintf("%s://%s/health", scheme, host)
+	url := fmt.Sprintf("%s://%s", scheme, host)
 	client := ClientHandler.GetClient(c.Dialer, clientId, timeout)
 	if client == nil {
 		err := errors.New("failed to get client")

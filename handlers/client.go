@@ -33,11 +33,12 @@ func (h ClientHandler) Handle(server *remotedialer.Server, rw http.ResponseWrite
 	if timeout == "" {
 		timeout = "15"
 	}
+	queryParams := req.URL.Query().Encode()
 	scheme := "http"
 	host := "127.0.0.1:1323"
 	vars := mux.Vars(req)
 	clientKey := vars["id"]
-	url := fmt.Sprintf("%s://%s/%s", scheme, host, vars["path"])
+	url := fmt.Sprintf("%s://%s/%s?%s", scheme, host, vars["path"], queryParams)
 	client := h.GetClient(server, clientKey, timeout)
 	switch req.Method {
 	case http.MethodGet:
