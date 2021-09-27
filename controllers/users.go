@@ -20,9 +20,9 @@ const (
 type UsersController struct{}
 
 func (c UsersController) GetAll(rw http.ResponseWriter, r *http.Request) {
-	// if !(handlers.AuthorizationHandler{}).IsAuthorized(rw, r) {
-	// 	return
-	// }
+	if !(handlers.AuthorizationHandler{}).IsAuthorized(rw, r) {
+		return
+	}
 	result := []models.Users{}
 	db := data.DBContext{}.GetRangePrefixedOfType(UserPrefix)
 	for _, v := range db {
@@ -62,9 +62,9 @@ func (c UsersController) Delete(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (c UsersController) Create(rw http.ResponseWriter, r *http.Request) {
-	// if !(handlers.AuthorizationHandler{}).IsAuthorized(rw, r) {
-	// 	return
-	// }
+	if !(handlers.AuthorizationHandler{}).IsAuthorized(rw, r) {
+		return
+	}
 	uuid := uuid.NewV4()
 	var model models.Users
 	err := json.NewDecoder(r.Body).Decode(&model)
