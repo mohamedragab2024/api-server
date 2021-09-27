@@ -31,18 +31,15 @@ roleRef:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  annotations:
-    deployment.kubernetes.io/revision: "85"
-    field.cattle.io/creatorId: user-99xql
   labels:
-    workload.user.cattle.io/workloadselector: deployment-default-kube-carbo-controller
+    app: deployment-default-kube-carbo-controller
   name: kube-carbo-controller
   namespace: default
 spec:
   replicas: 1
   selector:
     matchLabels:
-      workload.user.cattle.io/workloadselector: deployment-default-kube-carbo-controller
+      app: deployment-default-kube-carbo-controller
   strategy:
     rollingUpdate:
       maxSurge: 1
@@ -51,7 +48,7 @@ spec:
   template:
     metadata:
       labels:
-        workload.user.cattle.io/workloadselector: deployment-default-kube-carbo-controller
+        app: deployment-default-kube-carbo-controller
     spec:
       containers:
       - env:
@@ -91,7 +88,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    workload.user.cattle.io/workloadselector: deployment-default-kube-carbo-agent
+    app: deployment-default-kube-carbo-agent
   name: kube-carbo-agent
   namespace: default
 spec:
@@ -99,7 +96,7 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      workload.user.cattle.io/workloadselector: deployment-default-kube-carbo-agent
+      app: deployment-default-kube-carbo-agent
   strategy:
     rollingUpdate:
       maxSurge: 1
@@ -108,7 +105,7 @@ spec:
   template:
     metadata:
       labels:
-        workload.user.cattle.io/workloadselector: deployment-default-kube-carbo-agent
+        app: deployment-default-kube-carbo-agent
     spec:
       containers:
       - env:
@@ -122,7 +119,7 @@ spec:
           value: {SERVER_ADDRESS}
         image: regoo707/kub-carbo-agent
         imagePullPolicy: Always
-        name: kube-carbo-system
+        name: kube-carbo-agent
         resources: {}
         securityContext:
           allowPrivilegeEscalation: false

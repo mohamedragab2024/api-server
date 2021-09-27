@@ -155,7 +155,7 @@ func (c ClusterController) ConfigFile(rw http.ResponseWriter, r *http.Request) {
 	content = strings.ReplaceAll(content, "{SERVER_ADDRESS}", r.Host)
 	content = strings.ReplaceAll(content, "{CLIENT_ID}", model.Name)
 	content = strings.ReplaceAll(content, "{APP_KEY}", model.AppKey)
-	content = strings.ReplaceAll(content, "{REMOTE_SCHEMA}", r.URL.Scheme)
+	content = strings.ReplaceAll(content, "{REMOTE_SCHEMA}", "http")
 	b := bytes.NewBuffer([]byte(content))
 	rw.Header().Set("Content-Type", r.Header.Get("application/x-yaml"))
 	n, _ := b.WriteTo(rw)
