@@ -63,7 +63,7 @@ func main() {
 
 	Insector := connections.ClusterInsector{Dialer: handler}
 
-	Insector.OnStartUp()
+	go Insector.OnStartUp()
 
 	router := mux.NewRouter()
 	router.Handle("/connect", handler)
