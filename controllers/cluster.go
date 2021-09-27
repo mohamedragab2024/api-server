@@ -140,7 +140,7 @@ func (c ClusterController) ConfigFile(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	json.Unmarshal(obj, &model)
-	db := data.DBContext{}.Get(fmt.Sprintf("%s%s-%s", ClusterPrefix, model.Name, id))
+	db := data.DBContext{}.Get(fmt.Sprintf("%s%s-%s", ClusterPrefix, model.Name, model.Id))
 	if db == nil {
 		rw.WriteHeader(http.StatusNotFound)
 		return
