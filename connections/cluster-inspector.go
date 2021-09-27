@@ -115,5 +115,24 @@ func (c ClusterInsector) OnStartUp() {
 
 	for _, v := range result {
 		c.Register(v.Name, 30*time.Second)
+		v.HealthCheckAssigned = true
+		controller.SaveChanges(v)
 	}
+
+	for {
+		unRegisteredList := controller.GetList()
+		for _, v := range unRegisteredList {
+			if !v.HealthCheckAssigned {
+				c.Register(v.Name, 30*time.Second)
+				v.HealthCheckAssigned = true
+				controller.SaveChanges(v)
+			}
+
+		}
+
+		//every 5 min check the new clusters
+		time.Sleep(5 * time.Minute)
+
+	}
+
 }

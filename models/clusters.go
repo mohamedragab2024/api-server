@@ -1,13 +1,14 @@
 package models
 
 type Clusters struct {
-	Id              string              `json:"id"`
-	Name            string              `json:"name"`
-	UsersAcl        []ClusterPermissons `json:"users"`
-	MetricsCache    ClusterMetricsCache `json:"metrics"`
-	AppKey          string              `json:"appKey"`
-	IsConnected     bool                `json:"isConnected"`
-	LastSyncMessage string              `json:"lastSyncMessage"`
+	Id                  string              `json:"id"`
+	Name                string              `json:"name"`
+	UsersAcl            []ClusterPermissons `json:"users"`
+	MetricsCache        ClusterMetricsCache `json:"metrics"`
+	AppKey              string              `json:"appKey"`
+	IsConnected         bool                `json:"isConnected"`
+	LastSyncMessage     string              `json:"lastSyncMessage"`
+	HealthCheckAssigned bool                `json:"healthCheckAssigned"`
 }
 
 type ClusterPermissons struct {
