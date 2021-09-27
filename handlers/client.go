@@ -35,7 +35,7 @@ func (h ClientHandler) Handle(server *remotedialer.Server, rw http.ResponseWrite
 	}
 	queryParams := req.URL.Query().Encode()
 	scheme := "http"
-	host := "127.0.0.1:1323"
+	host := "kube-carbo-controller:1323"
 	vars := mux.Vars(req)
 	clientKey := vars["id"]
 	url := fmt.Sprintf("%s://%s/%s?%s", scheme, host, vars["path"], queryParams)

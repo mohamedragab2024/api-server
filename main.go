@@ -64,12 +64,21 @@ func main() {
 
 	router := mux.NewRouter()
 	router.Handle("/connect", handler)
-	hub := ws.NewHub()
-	go hub.Run()
+
+	client := &ws.Client{
+		Messages: make(chan []byte),
+	}
+
+	client.Connections = make(map[*ws.Hub]bool)
 	router.HandleFunc("/monitoring", func(rw http.ResponseWriter, r *http.Request) {
-		ws.ServeWs(hub, rw, r)
+		client.ServeMonitoring(rw, r)
 	})
 
+	router.HandleFunc("/outbound", func(rw http.ResponseWriter, r *http.Request) {
+		client.ServeOutBound(rw, r)
+	})
+
+	go client.ReadMessage()
 	routers.ClusterRouter{}.Handle(router)
 	routers.AuthRouter{}.Handle(router)
 	routers.UserRouter{}.Handle(router)

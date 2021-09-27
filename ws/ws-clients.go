@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -17,100 +19,81 @@ const (
 	maxMessageSize = 512
 )
 
-var (
-	newline = []byte{'\n'}
-	space   = []byte{' '}
-)
-
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
+var (
+	newline = []byte{'\n'}
+	space   = []byte{' '}
+)
+
 type Client struct {
-	hub  *Hub
-	conn *websocket.Conn
-	send chan []byte
+	Connections map[*Hub]bool
+	Messages    chan []byte
+	mu          sync.Mutex
 }
 
-func (c *Client) readPump() {
-	defer func() {
-		c.hub.unregister <- c
-		c.conn.Close()
-	}()
-	c.conn.SetReadLimit(maxMessageSize)
-	c.conn.SetReadDeadline(time.Now().Add(pongWait))
-	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+func (client *Client) ServeMonitoring(w http.ResponseWriter, r *http.Request) {
+	c, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Print("upgrade:", err)
+		return
+	}
+	defer c.Close()
 	for {
-		_, message, err := c.conn.ReadMessage()
+		_, message, err := c.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("error: %v", err)
 			}
 			break
 		}
-		fmt.Print(string(message))
-		fmt.Print(newline)
+
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
-		c.hub.broadcast <- message
+		client.Messages <- message
+
 	}
 }
 
-func (c *Client) writePump() {
-	ticker := time.NewTicker(pingPeriod)
-	defer func() {
-		ticker.Stop()
-		c.conn.Close()
-	}()
-	for {
-		select {
-		case message, ok := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if !ok {
-				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-				return
-			}
-
-			w, err := c.conn.NextWriter(websocket.TextMessage)
-			if err != nil {
-				return
-			}
-			w.Write(message)
-			n := len(c.send)
-			for i := 0; i < n; i++ {
-				w.Write(newline)
-				w.Write(<-c.send)
-			}
-
-			if err := w.Close(); err != nil {
-				return
-			}
-		case <-ticker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				return
-			}
-		case m := <-c.hub.broadcast:
-			for c := range c.hub.clients {
-				select {
-				case c.send <- m:
-				default:
-					delete(c.hub.clients, c)
-					close(c.send)
-				}
-			}
-		}
-	}
-}
-func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
+func (client *Client) ServeOutBound(w http.ResponseWriter, r *http.Request) {
+	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
+		log.Print("upgrade:", err)
 		return
 	}
-	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256)}
-	client.hub.register <- client
-	go client.writePump()
-	go client.readPump()
+
+	hub := Hub{
+		Connection: c,
+	}
+	client.Connections[&hub] = true
+	fmt.Printf("clients cound : %d \n", len(client.Connections))
+	for k := range r.Context().Done() {
+		logrus.Info(fmt.Sprintf("disconnecting %v", k))
+		delete(client.Connections, &hub)
+		return
+	}
+
+}
+
+func (c *Client) ReadMessage() {
+	for m := range c.Messages {
+
+		for cl, v := range c.Connections {
+			if v {
+				c.mu.Lock()
+				err := cl.Connection.WriteMessage(websocket.TextMessage, m)
+
+				if err != nil {
+					delete(c.Connections, cl)
+					logrus.Error(err)
+				}
+				c.mu.Unlock()
+			}
+
+		}
+
+	}
 }

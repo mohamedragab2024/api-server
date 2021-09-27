@@ -59,7 +59,7 @@ func (c ClusterInsector) healthCheck(clientId string) error {
 	ClientHandler := handlers.ClientHandler{}
 	timeout := "50"
 	scheme := "http"
-	host := "127.0.0.1:1323"
+	host := "kube-carbo-controller:1323"
 	url := fmt.Sprintf("%s://%s", scheme, host)
 	client := ClientHandler.GetClient(c.Dialer, clientId, timeout)
 	if client == nil {
