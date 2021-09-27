@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -12,7 +13,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	"github.com/kube-carbonara/api-server/connections"
+	"github.com/kube-carbonara/api-server/controllers"
 	handlers "github.com/kube-carbonara/api-server/handlers"
+	"github.com/kube-carbonara/api-server/models"
 	"github.com/kube-carbonara/api-server/routers"
 	"github.com/kube-carbonara/api-server/ws"
 	"github.com/rancher/remotedialer"
@@ -77,6 +80,14 @@ func main() {
 	router.HandleFunc("/outbound", func(rw http.ResponseWriter, r *http.Request) {
 		client.ServeOutBound(rw, r)
 	})
+
+	if os.Getenv("DEFAULT_USER_NAME") != "" && os.Getenv("DEFAULT_PASSWORD") != "" {
+		controllers.UsersController{}.CreateDefaultUser(models.Users{
+			UserName: os.Getenv("DEFAULT_USER_NAME"),
+			Password: os.Getenv("DEFAULT_PASSWORD"),
+			IsAdmin:  true,
+		})
+	}
 
 	go client.ReadMessage()
 	routers.ClusterRouter{}.Handle(router)

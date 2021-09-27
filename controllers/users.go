@@ -148,3 +148,21 @@ func (c UsersController) userIsExists(userName string) bool {
 	db := data.DBContext{}.GetRangePrefixedOfType(fmt.Sprintf("%s%s-", UserPrefix, userName))
 	return len(db) > 0
 }
+
+func (c UsersController) CreateDefaultUser(model models.Users) error {
+	uuid := uuid.NewV4()
+	if check, len := validation(model); len > 0 {
+		return fmt.Errorf("error in validation %s", check)
+	}
+	hash, err := crypto.HashPassword(model.Password)
+	if err != nil {
+		return err
+	}
+	model.Password = hash
+	model.UserId = uuid.String()
+	if c.userIsExists(model.UserName) {
+		return fmt.Errorf("%s already exists", model.UserName)
+	}
+	data.DBContext{}.Set(fmt.Sprintf("%s%s-%s", UserPrefix, model.UserName, model.UserId), model)
+	return nil
+}
