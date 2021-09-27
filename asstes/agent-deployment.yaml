@@ -56,13 +56,13 @@ spec:
       containers:
       - env:
         - name: APP_KEY
-          value: ${APP_KEY}
+          value: {APP_KEY}
         - name: CLIENT_ID
-          value: ${CLIENT_ID}
+          value: {CLIENT_ID}
         - name: REMOTE_SCHEMA
-          value: ${REMOTE_SCHEMA}
+          value: {REMOTE_SCHEMA}
         - name: SERVER_ADDRESS
-          value: ${SERVER_ADDRESS}
+          value: {SERVER_ADDRESS}
         image: regoo707/kub-carbo-controller
         imagePullPolicy: Always
         name: kube-carbo-controller
@@ -113,13 +113,13 @@ spec:
       containers:
       - env:
         - name: APP_KEY
-          value: ${APP_KEY}
+          value: {APP_KEY}
         - name: CLIENT_ID
-          value: ${CLIENT_ID}
+          value: {CLIENT_ID}
         - name: REMOTE_SCHEMA
-          value: ${REMOTE_SCHEMA}
+          value: {REMOTE_SCHEMA}
         - name: SERVER_ADDRESS
-          value: ${SERVER_ADDRESS}
+          value: {SERVER_ADDRESS}
         image: regoo707/kub-carbo-agent
         imagePullPolicy: Always
         name: kube-carbo-system
