@@ -65,7 +65,7 @@ spec:
         name: kube-carbo-controller
         ports:
         - containerPort: 1323
-          name: 1323tcp02
+          name: htto
           protocol: TCP
         resources: {}
         securityContext:
@@ -83,6 +83,27 @@ spec:
       schedulerName: default-scheduler
       securityContext: {}
       terminationGracePeriodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: deployment-default-kube-carbo-controller
+  name: kube-carbo-controller
+  namespace: default
+spec:
+  ports:
+  - name: http
+    port: 1323
+    protocol: TCP
+    targetPort: 1323
+  selector:
+    app: deployment-default-kube-carbo-controller
+  sessionAffinity: None
+  type: ClusterIP
+status:
+  loadBalancer: {}
+
 ---
 apiVersion: apps/v1
 kind: Deployment
