@@ -14,12 +14,15 @@ func (r ClusterRouter) Handle(router *mux.Router) {
 	router.HandleFunc("/clusters/{id}", controller.GetOne).Methods(httpverbs.MethodGet)
 	router.HandleFunc("/clusters/{id}", controller.Delete).Methods(httpverbs.MethodDelete)
 	router.HandleFunc("/clusters/{id}", controller.Update).Methods(httpverbs.MethodPut)
+	router.HandleFunc("/clusters/updatemetrics/{id}", controller.UpdateMetrics).Methods(httpverbs.MethodPut)
+
 	router.HandleFunc("/clusters", controller.Create).Methods(httpverbs.MethodPost)
 	//handle as well / at the end
 	router.HandleFunc("/clusters/", controller.GetAll).Methods(httpverbs.MethodGet)
 	router.HandleFunc("/clusters/{id}/", controller.GetOne).Methods(httpverbs.MethodGet)
 	router.HandleFunc("/clusters/{id}/", controller.Delete).Methods(httpverbs.MethodDelete)
 	router.HandleFunc("/clusters/{id}/", controller.Update).Methods(httpverbs.MethodPut)
+	router.HandleFunc("/clusters/updatemetrics/{id}/", controller.Update).Methods(httpverbs.MethodPut)
 	router.HandleFunc("/clusters/", controller.Create).Methods(httpverbs.MethodPost)
 	router.HandleFunc("/clusters/{id}/Config", controller.ConfigFile).Methods(httpverbs.MethodGet)
 }

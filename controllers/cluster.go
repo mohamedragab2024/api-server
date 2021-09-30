@@ -78,7 +78,7 @@ func (c ClusterController) Delete(rw http.ResponseWriter, r *http.Request) {
 	rw.WriteHeader(http.StatusNoContent)
 }
 
-func (c ClusterController) Update(rw http.ResponseWriter, r *http.Request) {
+func (c ClusterController) UpdateMetrics(rw http.ResponseWriter, r *http.Request) {
 	if !(handlers.AuthorizationHandler{}).IsAuthorized(rw, r) {
 		return
 	}
@@ -98,8 +98,31 @@ func (c ClusterController) Update(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	model.MetricsCache = metrics
-
 	data.DBContext{}.Set(fmt.Sprintf("%s%s-%s", ClusterPrefix, id, model.Id), model)
+	rw.WriteHeader(http.StatusNoContent)
+}
+
+func (c ClusterController) Update(rw http.ResponseWriter, r *http.Request) {
+	if !(handlers.AuthorizationHandler{}).IsAuthorized(rw, r) {
+		return
+	}
+	id := mux.Vars(r)["id"]
+	var cluster = models.Clusters{}
+	db := data.DBContext{}.GetRangePrefixedOfType(fmt.Sprintf("%s%s-", ClusterPrefix, id))
+	if len(db) == 0 {
+		rw.WriteHeader(http.StatusNotFound)
+		return
+	}
+	json.Unmarshal(db[0], &cluster)
+	var model models.Clusters
+	err := json.NewDecoder(r.Body).Decode(&model)
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	cluster.UsersAcl = append(cluster.UsersAcl, model.UsersAcl...)
+	data.DBContext{}.Set(fmt.Sprintf("%s%s-%s", ClusterPrefix, id, cluster.Id), cluster)
 	rw.WriteHeader(http.StatusNoContent)
 }
 
