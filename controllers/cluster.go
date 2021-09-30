@@ -121,6 +121,7 @@ func (c ClusterController) Update(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	cluster.UsersAcl = []models.ClusterPermissons{}
 	cluster.UsersAcl = append(cluster.UsersAcl, model.UsersAcl...)
 	data.DBContext{}.Set(fmt.Sprintf("%s%s-%s", ClusterPrefix, id, cluster.Id), cluster)
 	rw.WriteHeader(http.StatusNoContent)
