@@ -222,7 +222,7 @@ func (c ClusterController) GetList() []models.Clusters {
 	for _, v := range db {
 		var model models.Clusters
 		json.Unmarshal(v, &model)
-		model.RegisterScript = fmt.Sprintf("%s/clusters/%s/Config", config.ServerUrl, model.Name)
+		model.RegisterScript = fmt.Sprintf("kubectl  apply -f %s/clusters/%s/Config", config.ServerUrl, model.Name)
 		result = append(result, model)
 	}
 
@@ -245,7 +245,7 @@ func (c ClusterController) GetById(id string) (models.Clusters, error) {
 		return model, fmt.Errorf("cluster not found")
 	}
 	json.Unmarshal(db[0], &model)
-	model.RegisterScript = fmt.Sprintf("%s/clusters/%s/Config", config.ServerUrl, model.Name)
+	model.RegisterScript = fmt.Sprintf("kubectl  apply -f %s/clusters/%s/Config", config.ServerUrl, model.Name)
 	return model, nil
 }
 
