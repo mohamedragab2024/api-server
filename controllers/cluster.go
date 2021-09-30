@@ -24,7 +24,7 @@ const (
 type ClusterController struct{}
 
 func (c ClusterController) GetAll(rw http.ResponseWriter, r *http.Request) {
-	if !(handlers.AuthorizationHandler{}).IsAuthorized(rw, r) {
+	if !(handlers.AuthorizationHandler{}).IsAuthenticated(rw, r) {
 		return
 	}
 	result := c.GetList()
@@ -40,7 +40,7 @@ func (c ClusterController) GetAll(rw http.ResponseWriter, r *http.Request) {
 
 func (c ClusterController) GetOne(rw http.ResponseWriter, r *http.Request) {
 	config := utils.NewConfig()
-	if !(handlers.AuthorizationHandler{}).IsAuthorized(rw, r) {
+	if !(handlers.AuthorizationHandler{}).IsAuthenticated(rw, r) {
 		return
 	}
 	id := mux.Vars(r)["id"]
