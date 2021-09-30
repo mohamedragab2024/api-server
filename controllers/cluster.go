@@ -24,10 +24,13 @@ const (
 type ClusterController struct{}
 
 func (c ClusterController) GetAll(rw http.ResponseWriter, r *http.Request) {
-	if !(handlers.AuthorizationHandler{}).IsAuthenticated(rw, r) {
+	authHandler := handlers.AuthorizationHandler{}
+	if !authHandler.IsAuthenticated(rw, r) {
 		return
 	}
-	result := c.GetList()
+
+	user, _ := authHandler.CurrentUser(rw, r)
+	result := c.GetListByUser(user)
 
 	aggregation := c.calculateAggregation(result)
 	rw.WriteHeader(http.StatusOK)
@@ -39,8 +42,9 @@ func (c ClusterController) GetAll(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (c ClusterController) GetOne(rw http.ResponseWriter, r *http.Request) {
+	authHandler := handlers.AuthorizationHandler{}
 	config := utils.NewConfig()
-	if !(handlers.AuthorizationHandler{}).IsAuthenticated(rw, r) {
+	if !authHandler.IsAuthenticated(rw, r) {
 		return
 	}
 	id := mux.Vars(r)["id"]
@@ -51,11 +55,16 @@ func (c ClusterController) GetOne(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	currentUser, _ := authHandler.CurrentUser(rw, r)
+
 	for _, v := range db {
 		var model models.Clusters
 		json.Unmarshal(v, &model)
-		model.RegisterScript = fmt.Sprintf("kubectl  apply -f %s/clusters/%s/Config", config.ServerUrl, model.Name)
-		result = append(result, model)
+		if c.canRead(currentUser, model) {
+			model.RegisterScript = fmt.Sprintf("kubectl  apply -f %s/clusters/%s/Config", config.ServerUrl, model.Name)
+			result = append(result, model)
+		}
+
 	}
 	aggregation := c.calculateAggregation(result)
 	rw.WriteHeader(http.StatusOK)
@@ -231,6 +240,23 @@ func (c ClusterController) GetList() []models.Clusters {
 	return result
 }
 
+func (c ClusterController) GetListByUser(user models.Users) []models.Clusters {
+	config := utils.NewConfig()
+	result := []models.Clusters{}
+	db := data.DBContext{}.GetRangePrefixedOfType(ClusterPrefix)
+	for _, v := range db {
+		var model models.Clusters
+		json.Unmarshal(v, &model)
+		if c.canRead(user, model) {
+			model.RegisterScript = fmt.Sprintf("kubectl  apply -f %s/clusters/%s/Config", config.ServerUrl, model.Name)
+			result = append(result, model)
+		}
+
+	}
+
+	return result
+}
+
 func (c ClusterController) GetResultList() models.ClustersResult {
 	data := c.GetList()
 	return models.ClustersResult{
@@ -254,4 +280,14 @@ func (c ClusterController) GetById(id string) (models.Clusters, error) {
 func (c ClusterController) SaveChanges(model models.Clusters) error {
 	err := data.DBContext{}.Set(fmt.Sprintf("%s%s-%s", ClusterPrefix, model.Name, model.Id), model)
 	return err
+}
+
+func (c ClusterController) canRead(user models.Users, cluster models.Clusters) bool {
+	canRead := false
+	for _, v := range cluster.UsersAcl {
+		if v.UserOrGroupIdenetity == user.UserId {
+			canRead = true
+		}
+	}
+	return canRead
 }

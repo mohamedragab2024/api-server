@@ -18,6 +18,14 @@ import (
 
 type AuthorizationHandler struct{}
 
+func (h AuthorizationHandler) CurrentUser(rw http.ResponseWriter, req *http.Request) (models.Users, error) {
+	user, err := h.ExtractTokenMetadata(req)
+	if err != nil {
+		return models.Users{}, err
+	}
+
+	return user, nil
+}
 func (h AuthorizationHandler) IsAuthorized(rw http.ResponseWriter, req *http.Request) bool {
 	if agent := req.Header.Get("x-agent"); agent != "" {
 		appKey := req.Header.Get("x-agent-app-key")
