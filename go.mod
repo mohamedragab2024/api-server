@@ -8,7 +8,6 @@ require (
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/websocket v1.4.2
-	github.com/graarh/golang-socketio v0.0.0-20170510162725-2c44953b9b5f // indirect
 	github.com/joho/godotenv v1.3.0
 	github.com/rancher/remotedialer v0.2.5
 	github.com/rancher/wrangler v0.8.6
