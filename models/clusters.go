@@ -9,6 +9,7 @@ type Clusters struct {
 	IsConnected         bool                `json:"isConnected"`
 	LastSyncMessage     string              `json:"lastSyncMessage"`
 	HealthCheckAssigned bool                `json:"healthCheckAssigned"`
+	RegisterScript      string              `json:"registerScript"`
 }
 
 type ClusterPermissons struct {

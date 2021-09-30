@@ -13,6 +13,7 @@ import (
 	data "github.com/kube-carbonara/api-server/data"
 	"github.com/kube-carbonara/api-server/handlers"
 	"github.com/kube-carbonara/api-server/models"
+	"github.com/kube-carbonara/api-server/utils"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -215,11 +216,13 @@ func (c ClusterController) calculateAggregation(clusters []models.Clusters) mode
 }
 
 func (c ClusterController) GetList() []models.Clusters {
+	config := utils.Config{}
 	result := []models.Clusters{}
 	db := data.DBContext{}.GetRangePrefixedOfType(ClusterPrefix)
 	for _, v := range db {
 		var model models.Clusters
 		json.Unmarshal(v, &model)
+		model.RegisterScript = fmt.Sprintf("%s/clusters/%s/Config", config.ServerUrl, model.Name)
 		result = append(result, model)
 	}
 
@@ -235,13 +238,14 @@ func (c ClusterController) GetResultList() models.ClustersResult {
 }
 
 func (c ClusterController) GetById(id string) (models.Clusters, error) {
+	config := utils.Config{}
 	var model = models.Clusters{}
 	db := data.DBContext{}.GetRangePrefixedOfType(fmt.Sprintf("%s%s-", ClusterPrefix, id))
 	if len(db) == 0 {
 		return model, fmt.Errorf("cluster not found")
 	}
 	json.Unmarshal(db[0], &model)
-
+	model.RegisterScript = fmt.Sprintf("%s/clusters/%s/Config", config.ServerUrl, model.Name)
 	return model, nil
 }
 
