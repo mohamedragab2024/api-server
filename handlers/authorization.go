@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/mux"
 	"github.com/kube-carbonara/api-server/data"
 	"github.com/kube-carbonara/api-server/httpverbs"
