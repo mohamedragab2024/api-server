@@ -216,7 +216,7 @@ func (c ClusterController) calculateAggregation(clusters []models.Clusters) mode
 }
 
 func (c ClusterController) GetList() []models.Clusters {
-	config := utils.Config{}
+	config := utils.NewConfig()
 	result := []models.Clusters{}
 	db := data.DBContext{}.GetRangePrefixedOfType(ClusterPrefix)
 	for _, v := range db {
@@ -238,7 +238,7 @@ func (c ClusterController) GetResultList() models.ClustersResult {
 }
 
 func (c ClusterController) GetById(id string) (models.Clusters, error) {
-	config := utils.Config{}
+	config := utils.NewConfig()
 	var model = models.Clusters{}
 	db := data.DBContext{}.GetRangePrefixedOfType(fmt.Sprintf("%s%s-", ClusterPrefix, id))
 	if len(db) == 0 {
