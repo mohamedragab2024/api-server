@@ -39,6 +39,7 @@ func (c ClusterController) GetAll(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (c ClusterController) GetOne(rw http.ResponseWriter, r *http.Request) {
+	config := utils.NewConfig()
 	if !(handlers.AuthorizationHandler{}).IsAuthorized(rw, r) {
 		return
 	}
@@ -53,6 +54,7 @@ func (c ClusterController) GetOne(rw http.ResponseWriter, r *http.Request) {
 	for _, v := range db {
 		var model models.Clusters
 		json.Unmarshal(v, &model)
+		model.RegisterScript = fmt.Sprintf("kubectl  apply -f %s/clusters/%s/Config", config.ServerUrl, model.Name)
 		result = append(result, model)
 	}
 	aggregation := c.calculateAggregation(result)
