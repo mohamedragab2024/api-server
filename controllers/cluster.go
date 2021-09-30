@@ -283,9 +283,12 @@ func (c ClusterController) SaveChanges(model models.Clusters) error {
 }
 
 func (c ClusterController) canRead(user models.Users, cluster models.Clusters) bool {
+	if user.IsAdmin {
+		return true
+	}
 	canRead := false
 	for _, v := range cluster.UsersAcl {
-		if v.UserOrGroupIdenetity == user.UserId || user.IsAdmin {
+		if v.UserOrGroupIdenetity == user.UserId {
 			canRead = true
 		}
 	}
