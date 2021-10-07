@@ -105,6 +105,29 @@ func (c UsersController) Create(rw http.ResponseWriter, r *http.Request) {
 	rw.WriteHeader(http.StatusCreated)
 }
 
+func (c UsersController) Update(rw http.ResponseWriter, r *http.Request) {
+	if !(handlers.AuthorizationHandler{}).IsAuthorized(rw, r) {
+		return
+	}
+	var model models.Users
+	err := json.NewDecoder(r.Body).Decode(&model)
+	if err != nil {
+		fmt.Print("error in decoding")
+		http.Error(rw, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	db := data.DBContext{}.Get(fmt.Sprintf("%s%s-%s", UserPrefix, model.UserName, model.UserId))
+	if db == nil {
+		http.Error(rw, "User Not found", http.StatusNotFound)
+		return
+	}
+
+	data.DBContext{}.Set(fmt.Sprintf("%s%s-%s", UserPrefix, model.UserName, model.UserId), model)
+
+	rw.WriteHeader(http.StatusOK)
+}
+
 func (c UsersController) ChangePassword(rw http.ResponseWriter, r *http.Request) {
 	if !(handlers.AuthorizationHandler{}).IsAuthenticated(rw, r) {
 		return
@@ -133,7 +156,7 @@ func (c UsersController) ChangePassword(rw http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	data.DBContext{}.Set(fmt.Sprintf("%s%s", UserPrefix, model.UserId), model)
+	data.DBContext{}.Set(fmt.Sprintf("%s%s-%s", UserPrefix, model.UserName, model.UserId), model)
 	rw.WriteHeader(http.StatusOK)
 }
 
