@@ -168,6 +168,7 @@ func (c ClusterController) Create(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (c ClusterController) ConfigFile(rw http.ResponseWriter, r *http.Request) {
+	config := utils.NewConfig()
 	id := mux.Vars(r)["id"]
 	var model = models.Clusters{}
 	obj := data.DBContext{}.GetRangePrefixedOfType(fmt.Sprintf("%s%s-", ClusterPrefix, id))[0]
@@ -188,10 +189,10 @@ func (c ClusterController) ConfigFile(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	content := string(reader)
-	content = strings.ReplaceAll(content, "{SERVER_ADDRESS}", r.Host)
+	content = strings.ReplaceAll(content, "{SERVER_ADDRESS}", config.ServerUrl)
 	content = strings.ReplaceAll(content, "{CLIENT_ID}", model.Name)
 	content = strings.ReplaceAll(content, "{APP_KEY}", model.AppKey)
-	content = strings.ReplaceAll(content, "{REMOTE_SCHEMA}", "http")
+	content = strings.ReplaceAll(content, "{REMOTE_SCHEMA}", strings.Split(config.ServerUrl, ":")[0])
 	b := bytes.NewBuffer([]byte(content))
 	rw.Header().Set("Content-Type", r.Header.Get("application/x-yaml"))
 	n, _ := b.WriteTo(rw)
