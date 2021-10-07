@@ -60,7 +60,7 @@ spec:
           value: {REMOTE_SCHEMA}
         - name: SERVER_ADDRESS
           value: {SERVER_ADDRESS}
-        image: regoo707/kub-carbo-controller
+        image: kubecarbonara/kub-carbo-controller
         imagePullPolicy: Always
         name: kube-carbo-controller
         ports:
@@ -138,7 +138,7 @@ spec:
           value: {REMOTE_SCHEMA}
         - name: SERVER_ADDRESS
           value: {SERVER_ADDRESS}
-        image: regoo707/kub-carbo-agent
+        image: kubecarbonara/kub-carbo-agent
         imagePullPolicy: Always
         name: kube-carbo-agent
         resources: {}

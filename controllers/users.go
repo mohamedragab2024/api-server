@@ -42,12 +42,12 @@ func (c UsersController) GetOne(rw http.ResponseWriter, r *http.Request) {
 	}
 	id := mux.Vars(r)["id"]
 	var model = models.Users{}
-	db := data.DBContext{}.Get(fmt.Sprintf("%s%s-%s", UserPrefix, model.UserName, id))
-	if db == nil {
+	db := data.DBContext{}.GetRangePrefixedOfType(fmt.Sprintf("%s%s", UserPrefix, id))
+	if len(db) == 0 {
 		rw.WriteHeader(http.StatusNotFound)
 		return
 	}
-	json.Unmarshal(db, &model)
+	json.Unmarshal(db[0], &model)
 	rw.WriteHeader(http.StatusOK)
 	json.NewEncoder(rw).Encode(model)
 }
@@ -57,7 +57,14 @@ func (c UsersController) Delete(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := mux.Vars(r)["id"]
-	data.DBContext{}.Delete(fmt.Sprintf("%s%s", UserPrefix, id))
+	db := data.DBContext{}.GetRangePrefixedOfType(fmt.Sprintf("%s%s", UserPrefix, id))
+	if len(db) == 0 {
+		rw.WriteHeader(http.StatusNotFound)
+		return
+	}
+	var model = models.Users{}
+	json.Unmarshal(db[0], &model)
+	data.DBContext{}.Delete(fmt.Sprintf("%s%s-%s", UserPrefix, id, model.UserId))
 	rw.WriteHeader(http.StatusNoContent)
 }
 
